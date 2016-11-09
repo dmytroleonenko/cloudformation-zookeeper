@@ -68,28 +68,28 @@
   "Mappings" : {
     "RegionMap" : {
       "us-east-1" : {
-        "AMI" : "ami-96163afe"
+        "AMI" : "ami-4d795c5a"
       },
       "us-west-1" : {
-        "AMI" : "ami-117c9a55"
+        "AMI" : "ami-773e7417"
       },
       "us-west-2" : {
-        "AMI" : "ami-8d123ebd"
+        "AMI" : "ami-6f1eb80f"
       },
       "eu-west-1" : {
-        "AMI" : "ami-8be47afc"
+        "AMI" : "ami-7ddc960e"
       },
       "ap-southeast-1" : {
-        "AMI" : "ami-64b88936"
+        "AMI" : "ami-35ec4c56"
       },
       "ap-southeast-2" : {
-        "AMI" : "ami-abf48491"
+        "AMI" : "ami-cd201cae"
       },
       "ap-northeast-1" : {
-        "AMI" : "ami-3d62953d"
+        "AMI" : "ami-99a30ef8"
       },
       "sa-east-1" : {
-        "AMI" : "ami-db1fa7c6"
+        "AMI" : "ami-3eb82452"
       }
     }
   },
@@ -167,32 +167,35 @@
         "AssociatePublicIpAddress": "true",
         "InstanceType" : { "Ref" : "InstanceType" },
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
-          "#!/bin/bash -ex\n",
-
-          "# Helper function\n",
-          "function error_exit\n",
-          "{\n",
-          "  cfn-signal -e 1 -r \"$1\" '", { "Ref" : "WaitHandle" }, "'\n",
-          "  exit 1\n",
-          "}\n",
-
-          "# Set up and start the Exhibitor+ZooKeeper service\n",
-          "docker pull ", { "Ref": "DockerImage" }, "\n",
-          "runit-service create zk docker run ",
-          "   -p 8181:8181 -p 2181:2181 -p 2888:2888 -p 3888:3888",
-          "   -e 'S3_BUCKET=", { "Ref" : "ExhibitorS3Bucket" }, "'",
-          "   -e 'S3_PREFIX=", { "Ref" : "ExhibitorS3Prefix" }, "'",
-          "   -e 'AWS_ACCESS_KEY_ID=", { "Ref" : "HostKeys" }, "'",
-          "   -e 'AWS_SECRET_ACCESS_KEY=", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}, "'",
-          "   -e 'AWS_REGION=", { "Ref" : "ExhibitorS3Region" }, "'",
-          "   -e \"HOSTNAME=`ec2metadata --public-hostname`\"",
-          "   ", { "Ref": "DockerImage" }, "\n",
-          "runit-service enable zk\n",
-
-          "# All is well so signal success\n",
-          "cfn-signal -e 0 -r \"Stack setup complete\" '", { "Ref" : "WaitHandle" }, "'\n",
-
-          "#EOF"
+          "#cloud-config\n\n",
+          "coreos:\n",
+          "  units:\n",
+          "    - name: \"docker-zk-exhibitor.service\"\n",
+          "      command: \"start\"\n",
+          "      content: |\n",
+          "        [Unit]\n",
+          "        Description=Run a zk-exhibitor container\n",
+          "        Author=Dima Leonenko\n",
+          "        Requires=docker.service\n",
+          "        After=docker.service\n\n",
+          "        [Service]\n",
+          "        Restart=always\n",
+          "        ExecStartPre=/usr/bin/docker pull", { "Ref": "DockerImage" }, "\n",
+          "        ExecStartPre=-/usr/bin/docker rm zk-exhibitor\n",
+          "        ExecStart=/usr/bin/docker run --rm -p 8181:8181 -p 2181:2181 -p 2888:2888 -p 3888:3888 --name zk-exhibitor -e S3_BUCKET=", { "Ref" : "ExhibitorS3Bucket" }, " -e S3_PREFIX=", { "Ref" : "ExhibitorS3Prefix" }, " -e AWS_ACCESS_KEY_ID=", { "Ref" : "HostKeys" }, " -e 'AWS_SECRET_ACCESS_KEY=", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}, " -e 'AWS_REGION=", { "Ref" : "ExhibitorS3Region" }, " -e HOSTNAME=%H ",  { "Ref": "DockerImage" },
+          "        ExecStop=/usr/bin/docker stop -t 2 zk-exhibitor\n",
+          "    - name: \"cnf-signal.service\"\n",
+          "      command: \"start\"\n",
+          "      content: |\n",
+          "        [Unit]\n",
+          "        Description=AWS Cloud Formation Signaling\n",
+          "        After=docker-zk-exhibitor.service\n",
+          "        Requires=docker-zk-exhibitor.service\n",
+          "        Type=oneshot\n\n",
+          "        [Service]\n",
+          "        TimeoutStartSec=0\n",
+          "        ExecStartPre=/usr/bin/docker pull aweber/cfn-signal\n",
+          "        ExecStart=/usr/bin/docker run --rm --name cfn-signal aweber/cfn-signal --success=true -e 0 --reason=\"Stack setup complete\"", { "Ref" : "WaitHandle" }
         ]]}}
       }
     },
