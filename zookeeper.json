@@ -182,7 +182,11 @@
           "        Restart=always\n",
           "        ExecStartPre=/usr/bin/docker pull ", { "Ref": "DockerImage" }, "\n",
           "        ExecStartPre=-/usr/bin/docker rm zk-exhibitor\n",
-          "        ExecStart=/usr/bin/docker run --rm -p 8181:8181 -p 2181:2181 -p 2888:2888 -p 3888:3888 --name zk-exhibitor -e S3_BUCKET=", { "Ref" : "ExhibitorS3Bucket" }, " -e S3_PREFIX=", { "Ref" : "ExhibitorS3Prefix" }, " -e AWS_ACCESS_KEY_ID=", { "Ref" : "HostKeys" }, " -e 'AWS_SECRET_ACCESS_KEY=", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}, " -e 'AWS_REGION=", { "Ref" : "ExhibitorS3Region" }, " -e HOSTNAME=%H ",  { "Ref": "DockerImage" },
+          "        ExecStart=/usr/bin/docker run --rm -p 8181:8181 -p 2181:2181 -p 2888:2888 -p 3888:3888"
+          "--name zk-exhibitor -e S3_BUCKET=", { "Ref" : "ExhibitorS3Bucket" }, 
+          " -e S3_PREFIX=", { "Ref" : "ExhibitorS3Prefix" }, " -e AWS_ACCESS_KEY_ID=", { "Ref" : "HostKeys" }, 
+          " -e AWS_SECRET_ACCESS_KEY=", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}, 
+          " -e AWS_REGION=", { "Ref" : "ExhibitorS3Region" }, " -e HOSTNAME=%H ",  { "Ref": "DockerImage" }, "\n",
           "        ExecStop=/usr/bin/docker stop -t 2 zk-exhibitor\n",
           "    - name: \"cnf-signal.service\"\n",
           "      command: \"start\"\n",
