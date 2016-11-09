@@ -180,6 +180,7 @@
           "        After=docker.service\n\n",
           "        [Service]\n",
           "        Restart=always\n",
+          "        TimeoutStartSec=30m\n",
           "        ExecStartPre=/usr/bin/docker pull ", { "Ref": "DockerImage" }, "\n",
           "        ExecStartPre=-/usr/bin/docker rm zk-exhibitor\n",
           "        ExecStart=/usr/bin/docker run --rm -p 8181:8181 -p 2181:2181 -p 2888:2888 -p 3888:3888",
